@@ -2,6 +2,7 @@ from fastapi import FastAPI, HTTPException, Request, Depends, status
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
+from typing import Optional
 import os
 import secrets
 
@@ -56,7 +57,9 @@ class LockRequest(BaseModel):
 
 class SubmitRequest(BaseModel):
     owner_id: str
-    code: str
+    code: Optional[str] = None
+    pickle_data: Optional[str] = None
+    type: str = "code" # "code" or "pickle"
 
 @app.get("/")
 def read_root():
@@ -69,7 +72,11 @@ def get_info():
     return {
         "gpu": gpu_info,
         "status": status,
-        "agent_version": "0.1.0"
+        "agent_version": "0.1.0",
+        "connection": {
+            "public_url": state.public_url,
+            "token": state.auth_token
+        }
     }
 
 @app.post("/lock", dependencies=[Depends(verify_token)])
@@ -105,6 +112,16 @@ def submit_job(req: SubmitRequest):
     if status["owner_id"] != req.owner_id:
         raise HTTPException(status_code=403, detail="Unauthorized: You do not own the lock")
 
-    # Execute
-    result = execute_code(req.code)
-    return result
+    # Execute based on Type
+    if req.type == "pickle":
+        if not req.pickle_data:
+             raise HTTPException(status_code=400, detail="Missing pickle_data")
+        from gpuhost.job_manager import execute_pickle
+        return execute_pickle(req.pickle_data)
+        
+    else:
+        # Default: Code
+        if not req.code:
+             raise HTTPException(status_code=400, detail="Missing code")
+        result = execute_code(req.code)
+        return result

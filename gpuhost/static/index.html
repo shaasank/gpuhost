@@ -4,302 +4,577 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GPU Host Agent</title>
+    <title>GPU Host | Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            max-width: 800px;
-            margin: 2rem auto;
-            padding: 0 1rem;
-            background: #f4f4f9;
-            color: #333;
+        :root {
+            --bg: #0f172a;
+            --surface: #1e293b;
+            --primary: #3b82f6;
+            --accent: #ec4899;
+            --text-main: #f8fafc;
+            --text-dim: #94a3b8;
+            --success: #10b981;
+            --danger: #ef4444;
         }
 
-        .card {
-            background: white;
-            padding: 2rem;
-            border-radius: 12px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        body {
+            margin: 0;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background: var(--bg);
+            color: var(--text-main);
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 260px;
+            background: var(--surface);
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid #334155;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 800;
+            background: linear-gradient(to right, var(--primary), var(--accent));
+            -webkit-background-clip: text;
+            color: transparent;
             margin-bottom: 2rem;
         }
 
-        h1 {
-            margin-top: 0;
-            color: #2d3748;
+        .nav-item {
+            padding: 0.75rem 1rem;
+            margin-bottom: 0.5rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: 0.2s;
+            color: var(--text-dim);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
         }
 
-        .status-badge {
-            display: inline-block;
-            padding: 0.25rem 0.75rem;
-            border-radius: 999px;
-            font-weight: bold;
-            font-size: 0.875rem;
+        .nav-item:hover,
+        .nav-item.active {
+            background: #334155;
+            color: white;
         }
 
-        .status-free {
-            background: #c6f6d5;
-            color: #22543d;
-        }
-
-        .status-busy {
-            background: #fed7d7;
-            color: #822727;
-        }
-
-        .grid {
+        /* Main Content */
+        .main {
+            flex: 1;
+            padding: 2rem;
+            overflow-y: auto;
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1rem;
-            margin: 1.5rem 0;
+            grid-template-rows: auto 1fr auto;
+            gap: 2rem;
+        }
+
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1.5rem;
+        }
+
+        .stat-card {
+            background: var(--surface);
+            padding: 1.5rem;
+            border-radius: 12px;
+            border: 1px solid #334155;
         }
 
         .stat-label {
-            color: #718096;
-            font-size: 0.875rem;
-            margin-bottom: 0.25rem;
+            color: var(--text-dim);
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.5rem;
         }
 
         .stat-value {
-            font-size: 1.25rem;
-            font-weight: 600;
+            font-size: 2rem;
+            font-weight: 700;
         }
 
-        button {
-            background: #4299e1;
-            color: white;
-            border: none;
-            padding: 0.75rem 1.5rem;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 1rem;
-            transition: background 0.2s;
+        .stat-sub {
+            font-size: 0.9rem;
+            color: var(--text-dim);
+            margin-top: 0.25rem;
         }
 
-        button:hover {
-            background: #3182ce;
+        /* Chart Section */
+        .chart-container {
+            background: var(--surface);
+            padding: 1.5rem;
+            border-radius: 12px;
+            border: 1px solid #334155;
+            flex: 1;
+            min-height: 0;
+            position: relative;
         }
 
-        button:disabled {
-            background: #cbd5e0;
-            cursor: not-allowed;
-        }
-
-        .controls {
+        /* Action Bar */
+        .action-bar {
             display: flex;
             gap: 1rem;
+            align-items: center;
+            background: var(--surface);
+            padding: 1rem 1.5rem;
+            border-radius: 12px;
+            border: 1px solid #334155;
+        }
+
+        .btn {
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #2563eb;
+        }
+
+        .btn-danger {
+            background: rgba(239, 68, 68, 0.2);
+            color: var(--danger);
+        }
+
+        .btn-danger:hover {
+            background: rgba(239, 68, 68, 0.3);
+        }
+
+        /* Status Badge */
+        .badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 99px;
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+
+        .badge-free {
+            background: rgba(16, 185, 129, 0.2);
+            color: var(--success);
+        }
+
+        .badge-busy {
+            background: rgba(239, 68, 68, 0.2);
+            color: var(--danger);
+        }
+
+        /* Overlay */
+        #blocked-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(5px);
+            z-index: 100;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+        }
+
+        /* Editor Modal (Hidden by default) */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 50;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: var(--surface);
+            padding: 2rem;
+            border-radius: 12px;
+            width: 600px;
+            max-width: 90%;
+            border: 1px solid #475569;
+        }
+
+        textarea {
+            width: 100%;
+            height: 200px;
+            background: #0f172a;
+            border: 1px solid #334155;
+            color: var(--text-main);
+            font-family: monospace;
+            padding: 1rem;
+            border-radius: 8px;
+            resize: vertical;
+            margin: 1rem 0;
         }
     </style>
 </head>
 
 <body>
-    <div class="card">
-        <h1>GPU Host Agent</h1>
-        <div id="gpu-info">Loading...</div>
 
-        <div class="grid">
-            <div>
-                <div class="stat-label">Status</div>
-                <div id="status-badge" class="status-badge status-free">Checking...</div>
-            </div>
-            <div>
-                <div class="stat-label">Current Owner</div>
-                <div id="owner-id" class="stat-value">-</div>
-            </div>
-        </div>
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div class="logo">⚡ GPU Host</div>
+        <div class="nav-item active">📊 Dashboard</div>
+        <div class="nav-item" onclick="toggleEditor()">💻 Run Workload</div>
+        <div class="nav-item" onclick="toggleShare()">🔗 Share Access</div>
+        <div style="flex:1"></div>
+        <div style="font-size:0.8rem; color:var(--text-dim);">v0.1.2 • <span id="conn-status">Online</span></div>
+    </div>
 
-        <div class="controls">
-            <button onclick="lockGPU()">Lock GPU (Claim)</button>
-            <button onclick="unlockGPU()">Unlock GPU</button>
+    <!-- ... (Main Stats/Graph remain same) ... -->
+
+    <!-- Share Modal -->
+    <div class="modal" id="share-modal">
+        <div class="modal-content" style="width:500px;">
+            <h2 style="margin-top:0;">Share Access</h2>
+            <p style="color:var(--text-dim); margin-bottom:1.5rem;">Share these details to allow others to use your GPU.
+            </p>
+
+            <div style="margin-bottom:1rem;">
+                <label style="display:block; color:var(--text-dim); font-size:0.85rem; margin-bottom:0.5rem;">Public
+                    Share Link</label>
+                <div style="display:flex; gap:0.5rem;">
+                    <input type="text" id="share-url" readonly
+                        style="flex:1; background:#0f172a; border:1px solid #334155; padding:0.5rem; color:white; border-radius:6px;">
+                    <button class="btn" style="background:#334155;" onclick="copyToClipboard('share-url')">Copy</button>
+                </div>
+            </div>
+
+            <div style="margin-bottom:1rem;">
+                <label style="display:block; color:var(--text-dim); font-size:0.85rem; margin-bottom:0.5rem;">API
+                    Key</label>
+                <div style="display:flex; gap:0.5rem;">
+                    <input type="text" id="share-token" readonly
+                        style="flex:1; background:#0f172a; border:1px solid #334155; padding:0.5rem; color:white; border-radius:6px;">
+                    <button class="btn" style="background:#334155;"
+                        onclick="copyToClipboard('share-token')">Copy</button>
+                </div>
+            </div>
+
+            <div style="margin-bottom:1.5rem;">
+                <label style="display:block; color:var(--text-dim); font-size:0.85rem; margin-bottom:0.5rem;">Install
+                    Client</label>
+                <code id="share-pip"
+                    style="display:block; background:#0f172a; padding:0.75rem; border-radius:6px; font-size:0.85rem; color:#cbd5e1;">Loading...</code>
+            </div>
+
+            <div style="display:flex; justify-content:flex-end;">
+                <button class="btn btn-primary" onclick="toggleShare()">Done</button>
+            </div>
         </div>
     </div>
 
-    <!-- Job Panel -->
-    <div id="job-panel" class="card" style="display:none; margin-top: 1rem;">
-        <h3>Run Workload</h3>
-        <p style="font-size:0.9rem; color:#666; margin-bottom:0.5rem;">Enter Python code to execute on the GPU host:</p>
-        <textarea id="code-input" rows="5"
-            style="width:100%; border:1px solid #ddd; border-radius:4px; padding:0.5rem; font-family:monospace;"
-            placeholder="import pynvml\nprint('Running on GPU...')"></textarea>
-        <div style="margin-top:0.5rem; display:flex; gap:1rem; align-items:center;">
-            <button onclick="submitJob()" style="background:#48bb78;">Run Code</button>
-            <span id="job-status" style="font-size:0.9rem; color:#666;"></span>
-        </div>
-        <div id="job-output"
-            style="margin-top:1rem; background:#2d3748; color:#fff; padding:1rem; border-radius:4px; font-family:monospace; white-space:pre-wrap; display:none;">
+    <!-- Share Modal -->
+    <div class="modal" id="share-modal">
+        <div class="modal-content" style="width:500px;">
+            <h2 style="margin-top:0;">Share Access</h2>
+            <p style="color:var(--text-dim); margin-bottom:1.5rem;">Share these details to allow others to use your GPU.
+            </p>
+
+            <div style="margin-bottom:1rem;">
+                <label style="display:block; color:var(--text-dim); font-size:0.85rem; margin-bottom:0.5rem;">Public
+                    Share Link</label>
+                <div style="display:flex; gap:0.5rem;">
+                    <input type="text" id="share-url" readonly
+                        style="flex:1; background:#0f172a; border:1px solid #334155; padding:0.5rem; color:white; border-radius:6px;">
+                    <button class="btn" style="background:#334155;" onclick="copyToClipboard('share-url')">Copy</button>
+                </div>
+            </div>
+
+            <div style="margin-bottom:1rem;">
+                <label style="display:block; color:var(--text-dim); font-size:0.85rem; margin-bottom:0.5rem;">API
+                    Key</label>
+                <div style="display:flex; gap:0.5rem;">
+                    <input type="text" id="share-token" readonly
+                        style="flex:1; background:#0f172a; border:1px solid #334155; padding:0.5rem; color:white; border-radius:6px;">
+                    <button class="btn" style="background:#334155;"
+                        onclick="copyToClipboard('share-token')">Copy</button>
+                </div>
+            </div>
+
+            <div style="margin-bottom:1.5rem;">
+                <label style="display:block; color:var(--text-dim); font-size:0.85rem; margin-bottom:0.5rem;">Install
+                    Client</label>
+                <code id="share-pip"
+                    style="display:block; background:#0f172a; padding:0.75rem; border-radius:6px; font-size:0.85rem; color:#cbd5e1;">Loading...</code>
+            </div>
+
+            <div style="display:flex; justify-content:flex-end;">
+                <button class="btn btn-primary" onclick="toggleShare()">Done</button>
+            </div>
         </div>
     </div>
 
-    <div class="card" style="margin-top: 1rem; background: #e6fffa;">
-        <h3>Share this GPU (Free-link)</h3>
-        <code id="share-link"
-            style="word-break: break-all; font-size: 0.9rem; display: block; padding: 0.5rem; background: rgba(0,0,0,0.05); border-radius: 4px;">Connecting...</code>
-        <div style="margin-top:0.5rem; font-size:0.8rem; color:#666;">Anyone with this link can use your GPU.</div>
+    <!-- Main -->
+    <div class="main">
+        <!-- Stats -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-label">GPU Status</div>
+                <div style="display:flex; align-items:center; gap:0.5rem;">
+                    <span id="status-badge" class="badge badge-free">FREEE</span>
+                    <span id="owner-name" style="font-size:1rem; color:var(--text-dim)">(No Owner)</span>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Model / Driver</div>
+                <div class="stat-value" style="font-size:1.5rem;" id="gpu-name">-</div>
+                <div class="stat-sub" id="driver-ver">v-</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Memory</div>
+                <div class="stat-value" id="mem-val">0%</div>
+                <div class="stat-sub" id="mem-detail">0 / 0 MB</div>
+            </div>
+        </div>
+
+        <!-- Graph -->
+        <div class="chart-container">
+            <canvas id="gpuChart"></canvas>
+        </div>
+
+        <!-- Actions -->
+        <div class="action-bar">
+            <div style="flex:1;">
+                <div style="font-size:0.9rem; color:var(--text-dim);">Quick Actions</div>
+            </div>
+            <button class="btn btn-primary" id="lock-btn" onclick="lockGPU()">Lock GPU</button>
+            <button class="btn btn-danger" id="unlock-btn" onclick="unlockGPU()" style="display:none;">Unlock &
+                Release</button>
+        </div>
+    </div>
+
+    <!-- Job Editor Modal -->
+    <div class="modal" id="job-modal">
+        <div class="modal-content">
+            <h2 style="margin-top:0;">Run Python Workload</h2>
+            <textarea id="code-input" placeholder="import torch..."></textarea>
+            <div style="display:flex; justify-content:flex-end; gap:1rem;">
+                <button class="btn" style="background:#334155;" onclick="toggleEditor()">Close</button>
+                <button class="btn btn-primary" onclick="submitJob()">Run Code</button>
+            </div>
+            <pre id="job-output"
+                style="background:#0f172a; padding:1rem; border-radius:8px; margin-top:1rem; overflow:auto; max-height:150px; display:none;"></pre>
+        </div>
     </div>
 
     <!-- Blocked Overlay -->
-    <div id="blocked-overlay"
-        style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.8); color:white; align-items:center; justify-content:center; flex-direction:column; z-index:1000;">
-        <h1>⛔ Link is being used</h1>
-        <p>This GPU is currently occupied by another user.</p>
-        <button onclick="location.reload()"
-            style="background:white; color:black; margin-top:1rem; padding:0.75rem 2rem; border-radius:6px; border:none; cursor:pointer;">Try
-            Again</button>
+    <div id="blocked-overlay">
+        <h1 style="font-size:3rem; margin-bottom:1rem;">⛔</h1>
+        <h1>Link is Busy</h1>
+        <p style="color:var(--text-dim); margin-bottom:2rem;">Another user is currently running a workload.</p>
+        <button class="btn btn-primary" onclick="location.reload()">Check Again</button>
     </div>
 
     <script>
-        // 1. Identity Management
+        // --- Identity & Auth ---
         let OWNER_ID = sessionStorage.getItem("client_id");
-        if (!OWNER_ID) {
-            OWNER_ID = "user_" + Math.random().toString(36).substr(2, 9);
-            sessionStorage.setItem("client_id", OWNER_ID);
-        }
+        if (!OWNER_ID) { OWNER_ID = "u_" + Math.random().toString(36).substr(2, 9); sessionStorage.setItem("client_id", OWNER_ID); }
 
-        // 2. Auth
         const params = new URLSearchParams(window.location.search);
         const API_KEY = params.get("key");
+        if (!API_KEY) { document.body.innerHTML = "<h1>Access Denied: Missing Key</h1>"; throw "No Key"; }
 
-        if (!API_KEY) {
-            document.body.innerHTML = '<div style="padding:2rem; text-align:center;"><h1>Access Denied</h1><p>No API Key provided. Please use the link generated by the host agent.</p></div>';
-            throw new Error("No API Key");
-        }
+        // --- Chart Setup (Chart.js) ---
+        const ctx = document.getElementById('gpuChart').getContext('2d');
 
-        document.getElementById('share-link').textContent = window.location.href;
+        // Gradient Fill
+        const gradientFill = ctx.createLinearGradient(0, 0, 0, 400);
+        gradientFill.addColorStop(0, 'rgba(59, 130, 246, 0.5)'); // Blue start
+        gradientFill.addColorStop(1, 'rgba(59, 130, 246, 0.0)'); // Transparent end
 
-        // Install Command
-        const wheelUrl = `${window.location.origin}/static/gpuhost-0.1.0-py3-none-any.whl`;
-        document.getElementById('install-cmd').innerText = `pip install "${wheelUrl}"`;
-        document.getElementById('download-link').href = wheelUrl;
+        // Gradient Stroke
+        const gradientStroke = ctx.createLinearGradient(0, 0, 400, 0);
+        gradientStroke.addColorStop(0, '#3b82f6');
+        gradientStroke.addColorStop(1, '#ec4899'); // Blue to Pink
 
-        // Hide overlay initially
-        document.getElementById("blocked-overlay").style.display = "none";
-
-        async function authenticatedFetch(url, options = {}) {
-            const headers = options.headers || {};
-            headers['Authorization'] = `Bearer ${API_KEY}`;
-            options.headers = headers;
-            const res = await fetch(url, options);
-
-            // Handle Smart Lock Rejection
-            if (res.status === 503) {
-                document.getElementById("blocked-overlay").style.display = "flex";
-                throw new Error("Link is being used");
+        const gpuChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: Array(30).fill(''),
+                datasets: [{
+                    label: 'Memory Usage (MB)',
+                    borderColor: gradientStroke,
+                    backgroundColor: gradientFill,
+                    borderWidth: 2,
+                    data: Array(30).fill(0),
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 0,
+                    pointHoverRadius: 6,
+                    pointBackgroundColor: '#ec4899'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false, backgroundColor: 'rgba(15, 23, 42, 0.9)', titleColor: '#94a3b8', bodyColor: '#f8fafc', borderColor: '#334155', borderWidth: 1 } },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: { color: '#1e293b', borderDash: [5, 5] },
+                        ticks: { color: '#64748b', font: { size: 10 } }
+                    },
+                    x: { display: false } // Hide X axis completely for clean look
+                },
+                interaction: {
+                    mode: 'nearest',
+                    axis: 'x',
+                    intersect: false
+                }
             }
+        });
+
+        // --- Core Logic ---
+        async function authFetch(url, opts = {}) {
+            opts.headers = opts.headers || {};
+            opts.headers['Authorization'] = `Bearer ${API_KEY}`;
+            const res = await fetch(url, opts);
+            if (res.status === 503) { document.getElementById("blocked-overlay").style.display = "flex"; throw "Blocked"; }
             return res;
         }
 
-        async function fetchInfo() {
+        async function update() {
             try {
-                const res = await authenticatedFetch('/info');
-                if (res.status === 403) {
-                    document.getElementById('gpu-info').textContent = "⛔ Access Denied (Invalid Key)";
-                    return;
-                }
+                const res = await authFetch('/info');
                 const data = await res.json();
                 render(data);
-            } catch (e) {
-                console.error("Fetch error", e);
-                // Don't show lost connection if blocked, checking if visible
-                if (document.getElementById("blocked-overlay").style.display === "none") {
-                    document.getElementById('gpu-info').textContent = "⚠️ Lost connection to agent";
-                }
-            }
+
+                // Update Graph
+                const used = data.gpu.memory_used / 1024 / 1024;
+                gpuChart.data.datasets[0].data.push(used);
+                gpuChart.data.datasets[0].data.shift();
+                gpuChart.update();
+
+            } catch (e) { console.error(e); }
         }
 
         function render(data) {
             const gpu = data.gpu;
             const status = data.status;
 
-            if (gpu) {
-                document.getElementById('gpu-info').innerHTML = `
-                    <div class="grid">
-                        <div><div class="stat-label">GPU Name</div><div class="stat-value">${gpu.name}</div></div>
-                        <div><div class="stat-label">Driver</div><div class="stat-value">${gpu.driver_version}</div></div>
-                        <div><div class="stat-label">Memory</div><div class="stat-value">${(gpu.memory_free / 1024 / 1024).toFixed(0)} MB Free / ${(gpu.memory_total / 1024 / 1024).toFixed(0)} MB Total</div></div>
-                    </div>
-                `;
-            }
+            // Stats
+            document.getElementById('gpu-name').innerText = gpu.name;
+            document.getElementById('driver-ver').innerText = `Driver: ${gpu.driver_version}`;
 
+            const usedMB = (gpu.memory_used / 1024 / 1024).toFixed(0);
+            const totalMB = (gpu.memory_total / 1024 / 1024).toFixed(0);
+            const perc = Math.round((gpu.memory_used / gpu.memory_total) * 100);
+
+            document.getElementById('mem-val').innerText = `${perc}%`;
+            document.getElementById('mem-detail').innerText = `${usedMB} / ${totalMB} MB`;
+
+            // Lock Status
             const badge = document.getElementById('status-badge');
-            const ownerDisplay = document.getElementById('owner-id');
-            const jobPanel = document.getElementById('job-panel');
+            const lockBtn = document.getElementById('lock-btn');
+            const unlockBtn = document.getElementById('unlock-btn');
+            const ownerName = document.getElementById('owner-name');
 
             if (status.is_locked) {
-                badge.textContent = "BUSY";
-                badge.className = "status-badge status-busy";
-
+                badge.innerText = "BUSY";
+                badge.className = "badge badge-busy";
                 if (status.owner_id === OWNER_ID) {
-                    ownerDisplay.textContent = "You";
-                    jobPanel.style.display = "block";
+                    ownerName.innerText = "(You)";
+                    ownerName.style.color = "#10b981";
+                    lockBtn.style.display = "none";
+                    unlockBtn.style.display = "block";
                 } else {
-                    ownerDisplay.textContent = "Someone Else";
-                    jobPanel.style.display = "none";
+                    ownerName.innerText = "(Other)";
+                    ownerName.style.color = "#ef4444";
+                    lockBtn.disabled = true;
+                    lockBtn.innerText = "Locked";
                 }
             } else {
-                badge.textContent = "FREE";
-                badge.className = "status-badge status-free";
-                ownerDisplay.textContent = "None";
-                jobPanel.style.display = "none";
+                badge.innerText = "FREE";
+                badge.className = "badge badge-free";
+                ownerName.innerText = "-";
+                lockBtn.style.display = "block";
+                lockBtn.disabled = false;
+                lockBtn.innerText = "Lock GPU";
+                unlockBtn.style.display = "none";
+            }
+            // Populate Share Info
+            if (data.connection) {
+                const pubUrl = data.connection.public_url || window.location.origin;
+                const token = data.connection.token || API_KEY;
+
+                let fullLink = pubUrl;
+                if (!fullLink.includes('?key=')) fullLink += `/?key=${token}`;
+
+                const urlInput = document.getElementById('share-url');
+                if (urlInput) urlInput.value = fullLink;
+
+                const tokenInput = document.getElementById('share-token');
+                if (tokenInput) tokenInput.value = token;
+
+                const wheelUrl = `${pubUrl}/static/gpuhost-0.1.2-py3-none-any.whl`;
+                const pipEl = document.getElementById('share-pip');
+                if (pipEl) pipEl.innerText = `pip install ${wheelUrl}`;
             }
         }
 
-        async function lockGPU() {
-            try {
-                const res = await authenticatedFetch('/lock', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ owner_id: OWNER_ID })
-                });
-                if (!res.ok) {
-                    const err = await res.json();
-                    if (res.status !== 503) alert(err.detail); // 503 handled by fetch wrapper
-                }
-                fetchInfo();
-            } catch (e) { }
-        }
-
-        async function unlockGPU() {
-            try {
-                const res = await authenticatedFetch('/unlock', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ owner_id: OWNER_ID })
-                });
-                if (!res.ok) alert((await res.json()).detail);
-                fetchInfo();
-            } catch (e) { alert("Error unlocking"); }
-        }
+        // Actions
+        async function lockGPU() { await authFetch('/lock', { method: 'POST', body: JSON.stringify({ owner_id: OWNER_ID }), headers: { 'Content-Type': 'application/json' } }); update(); }
+        async function unlockGPU() { await authFetch('/unlock', { method: 'POST', body: JSON.stringify({ owner_id: OWNER_ID }), headers: { 'Content-Type': 'application/json' } }); update(); }
 
         async function submitJob() {
-            const code = document.getElementById('code-input').value;
-            const statusSpan = document.getElementById('job-status');
-            const outputDiv = document.getElementById('job-output');
-
-            statusSpan.textContent = "Running...";
-            outputDiv.style.display = "none";
+            const code = document.getElementById("code-input").value;
+            const out = document.getElementById("job-output");
+            out.style.display = "block";
+            out.innerText = "Running...";
 
             try {
-                const res = await authenticatedFetch('/submit', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ owner_id: OWNER_ID, code: code })
-                });
-
-                const data = await res.json();
-                statusSpan.textContent = data.status === "success" ? "✅ Finished" : "❌ Error";
-                outputDiv.style.display = "block";
-
-                if (data.stdout) outputDiv.textContent = data.stdout;
-                if (data.stderr) outputDiv.textContent += "\n[Error]\n" + data.stderr;
-                if (!data.stdout && !data.stderr) outputDiv.textContent = "(No output)";
-
-            } catch (e) {
-                statusSpan.textContent = "Request Failed";
-                alert("Job failed to submit");
-            }
+                const res = await authFetch('/submit', { method: 'POST', body: JSON.stringify({ owner_id: OWNER_ID, code }), headers: { 'Content-Type': 'application/json' } });
+                const d = await res.json();
+                out.innerText = d.stdout || d.stderr || "Done (No Output)";
+            } catch (e) { out.innerText = "Error submitting job"; }
         }
 
-        setInterval(fetchInfo, 2000);
-        fetchInfo();
+        // UI Toggles
+        function toggleEditor() {
+            const el = document.getElementById('job-modal');
+            el.style.display = el.style.display === 'flex' ? 'none' : 'flex';
+        }
+
+        function toggleConnect() {
+            alert(`Install Client:\npip install ${window.location.origin}/static/gpuhost-0.1.2-py3-none-any.whl`);
+        }
+
+        function toggleShare() {
+            const el = document.getElementById('share-modal');
+            el.style.display = el.style.display === 'flex' ? 'none' : 'flex';
+        }
+
+        function copyToClipboard(id) {
+            const el = document.getElementById(id);
+            el.select();
+            document.execCommand('copy');
+            // alert("Copied!"); 
+            // Better UX: change button text temporarily? simple alert is fine for PoC
+        }
+
+        setInterval(update, 2000);
+        update();
     </script>
 </body>
 

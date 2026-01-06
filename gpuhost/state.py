@@ -10,6 +10,9 @@ class GPUState:
             cls._instance.is_locked = False
             cls._instance.owner_id: Optional[str] = None
             cls._instance.workload_start_time: Optional[datetime] = None
+            cls._instance.public_url = None
+            cls._instance.auth_token = None
+            
         return cls._instance
 
     def lock(self, owner_id: str) -> bool:

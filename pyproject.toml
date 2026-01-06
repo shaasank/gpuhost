@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "gpuhost"
-version = "0.1.1"
+version = "0.1.2"
 description = "Self-hosted GPU sharing agent"
 readme = "README.md"
 requires-python = ">=3.8"
@@ -24,7 +24,8 @@ dependencies = [
     "pydantic",
     "nvidia-ml-py",
     "pyngrok",
-    "requests"
+    "requests",
+    "dill"
 ]
 
 [project.scripts]
