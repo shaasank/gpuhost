@@ -4,8 +4,19 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "gpuhost"
-version = "0.1.0"
+version = "0.1.1"
 description = "Self-hosted GPU sharing agent"
+readme = "README.md"
+requires-python = ">=3.8"
+authors = [
+  {name = "Shaasank", email = "your.email@example.com"}
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+urls = {Homepage = "https://github.com/shaasank/gpuhost"}
 dependencies = [
     "fastapi",
     "uvicorn",
