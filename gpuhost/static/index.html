@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GPU Host Agent</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            max-width: 800px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+            background: #f4f4f9;
+            color: #333;
+        }
+
+        .card {
+            background: white;
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 2rem;
+        }
+
+        h1 {
+            margin-top: 0;
+            color: #2d3748;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 999px;
+            font-weight: bold;
+            font-size: 0.875rem;
+        }
+
+        .status-free {
+            background: #c6f6d5;
+            color: #22543d;
+        }
+
+        .status-busy {
+            background: #fed7d7;
+            color: #822727;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin: 1.5rem 0;
+        }
+
+        .stat-label {
+            color: #718096;
+            font-size: 0.875rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .stat-value {
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+
+        button {
+            background: #4299e1;
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: background 0.2s;
+        }
+
+        button:hover {
+            background: #3182ce;
+        }
+
+        button:disabled {
+            background: #cbd5e0;
+            cursor: not-allowed;
+        }
+
+        .controls {
+            display: flex;
+            gap: 1rem;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="card">
+        <h1>GPU Host Agent</h1>
+        <div id="gpu-info">Loading...</div>
+
+        <div class="grid">
+            <div>
+                <div class="stat-label">Status</div>
+                <div id="status-badge" class="status-badge status-free">Checking...</div>
+            </div>
+            <div>
+                <div class="stat-label">Current Owner</div>
+                <div id="owner-id" class="stat-value">-</div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button onclick="lockGPU()">Lock GPU (Claim)</button>
+            <button onclick="unlockGPU()">Unlock GPU</button>
+        </div>
+    </div>
+
+    <!-- Job Panel -->
+    <div id="job-panel" class="card" style="display:none; margin-top: 1rem;">
+        <h3>Run Workload</h3>
+        <p style="font-size:0.9rem; color:#666; margin-bottom:0.5rem;">Enter Python code to execute on the GPU host:</p>
+        <textarea id="code-input" rows="5"
+            style="width:100%; border:1px solid #ddd; border-radius:4px; padding:0.5rem; font-family:monospace;"
+            placeholder="import pynvml\nprint('Running on GPU...')"></textarea>
+        <div style="margin-top:0.5rem; display:flex; gap:1rem; align-items:center;">
+            <button onclick="submitJob()" style="background:#48bb78;">Run Code</button>
+            <span id="job-status" style="font-size:0.9rem; color:#666;"></span>
+        </div>
+        <div id="job-output"
+            style="margin-top:1rem; background:#2d3748; color:#fff; padding:1rem; border-radius:4px; font-family:monospace; white-space:pre-wrap; display:none;">
+        </div>
+    </div>
+
+    <div class="card" style="margin-top: 1rem; background: #e6fffa;">
+        <h3>Share this GPU (Free-link)</h3>
+        <code id="share-link"
+            style="word-break: break-all; font-size: 0.9rem; display: block; padding: 0.5rem; background: rgba(0,0,0,0.05); border-radius: 4px;">Connecting...</code>
+        <div style="margin-top:0.5rem; font-size:0.8rem; color:#666;">Anyone with this link can use your GPU.</div>
+    </div>
+
+    <!-- Blocked Overlay -->
+    <div id="blocked-overlay"
+        style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.8); color:white; align-items:center; justify-content:center; flex-direction:column; z-index:1000;">
+        <h1>⛔ Link is being used</h1>
+        <p>This GPU is currently occupied by another user.</p>
+        <button onclick="location.reload()"
+            style="background:white; color:black; margin-top:1rem; padding:0.75rem 2rem; border-radius:6px; border:none; cursor:pointer;">Try
+            Again</button>
+    </div>
+
+    <script>
+        // 1. Identity Management
+        let OWNER_ID = sessionStorage.getItem("client_id");
+        if (!OWNER_ID) {
+            OWNER_ID = "user_" + Math.random().toString(36).substr(2, 9);
+            sessionStorage.setItem("client_id", OWNER_ID);
+        }
+
+        // 2. Auth
+        const params = new URLSearchParams(window.location.search);
+        const API_KEY = params.get("key");
+
+        if (!API_KEY) {
+            document.body.innerHTML = '<div style="padding:2rem; text-align:center;"><h1>Access Denied</h1><p>No API Key provided. Please use the link generated by the host agent.</p></div>';
+            throw new Error("No API Key");
+        }
+
+        document.getElementById('share-link').textContent = window.location.href;
+
+        // Install Command
+        const wheelUrl = `${window.location.origin}/static/gpuhost-0.1.0-py3-none-any.whl`;
+        document.getElementById('install-cmd').innerText = `pip install "${wheelUrl}"`;
+        document.getElementById('download-link').href = wheelUrl;
+
+        // Hide overlay initially
+        document.getElementById("blocked-overlay").style.display = "none";
+
+        async function authenticatedFetch(url, options = {}) {
+            const headers = options.headers || {};
+            headers['Authorization'] = `Bearer ${API_KEY}`;
+            options.headers = headers;
+            const res = await fetch(url, options);
+
+            // Handle Smart Lock Rejection
+            if (res.status === 503) {
+                document.getElementById("blocked-overlay").style.display = "flex";
+                throw new Error("Link is being used");
+            }
+            return res;
+        }
+
+        async function fetchInfo() {
+            try {
+                const res = await authenticatedFetch('/info');
+                if (res.status === 403) {
+                    document.getElementById('gpu-info').textContent = "⛔ Access Denied (Invalid Key)";
+                    return;
+                }
+                const data = await res.json();
+                render(data);
+            } catch (e) {
+                console.error("Fetch error", e);
+                // Don't show lost connection if blocked, checking if visible
+                if (document.getElementById("blocked-overlay").style.display === "none") {
+                    document.getElementById('gpu-info').textContent = "⚠️ Lost connection to agent";
+                }
+            }
+        }
+
+        function render(data) {
+            const gpu = data.gpu;
+            const status = data.status;
+
+            if (gpu) {
+                document.getElementById('gpu-info').innerHTML = `
+                    <div class="grid">
+                        <div><div class="stat-label">GPU Name</div><div class="stat-value">${gpu.name}</div></div>
+                        <div><div class="stat-label">Driver</div><div class="stat-value">${gpu.driver_version}</div></div>
+                        <div><div class="stat-label">Memory</div><div class="stat-value">${(gpu.memory_free / 1024 / 1024).toFixed(0)} MB Free / ${(gpu.memory_total / 1024 / 1024).toFixed(0)} MB Total</div></div>
+                    </div>
+                `;
+            }
+
+            const badge = document.getElementById('status-badge');
+            const ownerDisplay = document.getElementById('owner-id');
+            const jobPanel = document.getElementById('job-panel');
+
+            if (status.is_locked) {
+                badge.textContent = "BUSY";
+                badge.className = "status-badge status-busy";
+
+                if (status.owner_id === OWNER_ID) {
+                    ownerDisplay.textContent = "You";
+                    jobPanel.style.display = "block";
+                } else {
+                    ownerDisplay.textContent = "Someone Else";
+                    jobPanel.style.display = "none";
+                }
+            } else {
+                badge.textContent = "FREE";
+                badge.className = "status-badge status-free";
+                ownerDisplay.textContent = "None";
+                jobPanel.style.display = "none";
+            }
+        }
+
+        async function lockGPU() {
+            try {
+                const res = await authenticatedFetch('/lock', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ owner_id: OWNER_ID })
+                });
+                if (!res.ok) {
+                    const err = await res.json();
+                    if (res.status !== 503) alert(err.detail); // 503 handled by fetch wrapper
+                }
+                fetchInfo();
+            } catch (e) { }
+        }
+
+        async function unlockGPU() {
+            try {
+                const res = await authenticatedFetch('/unlock', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ owner_id: OWNER_ID })
+                });
+                if (!res.ok) alert((await res.json()).detail);
+                fetchInfo();
+            } catch (e) { alert("Error unlocking"); }
+        }
+
+        async function submitJob() {
+            const code = document.getElementById('code-input').value;
+            const statusSpan = document.getElementById('job-status');
+            const outputDiv = document.getElementById('job-output');
+
+            statusSpan.textContent = "Running...";
+            outputDiv.style.display = "none";
+
+            try {
+                const res = await authenticatedFetch('/submit', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ owner_id: OWNER_ID, code: code })
+                });
+
+                const data = await res.json();
+                statusSpan.textContent = data.status === "success" ? "✅ Finished" : "❌ Error";
+                outputDiv.style.display = "block";
+
+                if (data.stdout) outputDiv.textContent = data.stdout;
+                if (data.stderr) outputDiv.textContent += "\n[Error]\n" + data.stderr;
+                if (!data.stdout && !data.stderr) outputDiv.textContent = "(No output)";
+
+            } catch (e) {
+                statusSpan.textContent = "Request Failed";
+                alert("Job failed to submit");
+            }
+        }
+
+        setInterval(fetchInfo, 2000);
+        fetchInfo();
+    </script>
+</body>
+
+</html>

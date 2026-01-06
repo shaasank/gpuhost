@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "gpuhost"
+version = "0.1.0"
+description = "Self-hosted GPU sharing agent"
+dependencies = [
+    "fastapi",
+    "uvicorn",
+    "typer",
+    "pydantic",
+    "nvidia-ml-py",
+    "pyngrok",
+    "requests"
+]
+
+[project.scripts]
+gpuhost = "gpuhost.cli:app"

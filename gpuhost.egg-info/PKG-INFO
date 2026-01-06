@@ -1,0 +1,11 @@
+Metadata-Version: 2.4
+Name: gpuhost
+Version: 0.1.0
+Summary: Self-hosted GPU sharing agent
+Requires-Dist: fastapi
+Requires-Dist: uvicorn
+Requires-Dist: typer
+Requires-Dist: pydantic
+Requires-Dist: nvidia-ml-py
+Requires-Dist: pyngrok
+Requires-Dist: requests

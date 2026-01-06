@@ -1,0 +1,7 @@
+fastapi
+uvicorn
+typer
+pydantic
+nvidia-ml-py
+pyngrok
+requests
