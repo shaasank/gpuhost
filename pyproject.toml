@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "gpuhost"
+version = "0.1.2"
+description = "Self-hosted GPU sharing agent"
+readme = "README.md"
+requires-python = ">=3.8"
+authors = [
+  {name = "Shaasank", email = "your.email@example.com"}
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+urls = {Homepage = "https://github.com/shaasank/gpuhost"}
+dependencies = [
+    "fastapi",
+    "uvicorn",
+    "typer",
+    "pydantic",
+    "nvidia-ml-py",
+    "pyngrok",
+    "requests",
+    "dill"
+]
+
+[project.scripts]
+gpuhost = "gpuhost.cli:app"
