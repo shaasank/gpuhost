@@ -1,0 +1,13 @@
+[project]
+name = "gpuhost"
+version = "0.1.0"
+description = "Self-hosted GPU sharing agent"
+dependencies = [
+    "fastapi",
+    "uvicorn",
+    "typer",
+    "pydantic"
+]
+
+[project.scripts]
+gpuhost = "gpuhost.cli:main"
